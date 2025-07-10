@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meeting Room Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-card {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .status-item.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-item.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-item.active {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .meeting-form {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: grid;
+            gap: 5px;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input, .form-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .control-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        
+        .meetings-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .meeting-item {
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        
+        .meeting-item.active {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        
+        .meeting-qr {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .logs {
+            height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-info {
+            color: #17a2b8;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-card {
+                grid-column: span 1;
+            }
+            
+            .control-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Smart Meeting Room Dashboard</h1>
+            <p>Sistem otomasi ruang meeting terintegrasi</p>
+        </div>
+        
+        <div class="dashboard">
+            <!-- System Status -->
+            <div class="card status-card">
+                <h3>System Status</h3>
+                <div class="status-item" id="esp32a-status">
+                    <h4>ESP32A Gateway</h4>
+                    <p>Disconnected</p>
+                </div>
+                <div class="status-item" id="door-status">
+                    <h4>Door</h4>
+                    <p>Locked</p>
+                </div>
+                <div class="status-item" id="lights-status">
+                    <h4>Lights</h4>
+                    <p>Off</p>
+                </div>
+                <div class="status-item" id="ac-status">
+                    <h4>AC</h4>
+                    <p>Off</p>
+                </div>
+                <div class="status-item" id="meeting-status">
+                    <h4>Current Meeting</h4>
+                    <p>No active meeting</p>
+                </div>
+                <div class="status-item" id="emergency-status">
+                    <h4>Emergency</h4>
+                    <p>Normal</p>
+                </div>
+            </div>
+            
+            <!-- Meeting Booking -->
+            <div class="card">
+                <h3>Book Meeting</h3>
+                <form class="meeting-form" id="meeting-form">
+                    <div class="form-group">
+                        <label for="title">Meeting Title</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="organizer">Organizer</label>
+                        <input type="text" id="organizer" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="start-time">Start Time</label>
+                        <input type="datetime-local" id="start-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end-time">End Time</label>
+                        <input type="datetime-local" id="end-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="participants">Participants (comma separated)</label>
+                        <textarea id="participants" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Book Meeting</button>
+                </form>
+            </div>
+            
+            <!-- Manual Controls -->
+            <div class="card">
+                <h3>Manual Controls</h3>
+                <div class="control-buttons">
+                    <button class="btn btn-success" onclick="controlLights(true)">Lights ON</button>
+                    <button class="btn btn-danger" onclick="controlLights(false)">Lights OFF</button>
+                    <button class="btn btn-success" onclick="controlAC(true)">AC ON</button>
+                    <button class="btn btn-danger" onclick="controlAC(false)">AC OFF</button>
+                    <button class="btn btn-success" onclick="controlDoor(false)">Unlock Door</button>
+                    <button class="btn btn-danger" onclick="controlDoor(true)">Lock Door</button>
+                </div>
+            </div>
+            
+            <!-- Meetings List -->
+            <div class="card">
+                <h3>Scheduled Meetings</h3>
+                <div class="meetings-list" id="meetings-list">
+                    <p>No meetings scheduled</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- QR Validation -->
+        <div class="card">
+            <h3>QR Code Validation</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="qr-input" placeholder="Enter QR Code" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <button class="btn btn-primary" onclick="validateQR()">Validate</button>
+            </div>
+            <div id="qr-result" style="margin-top: 10px;"></div>
+        </div>
+        
+        <!-- System Logs -->
+        <div class="card">
+            <h3>System Logs</h3>
+            <div class="logs" id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Connect to server
+        socket.on('connect', () => {
+            addLog('Connected to server', 'success');
+        });
+        
+        socket.on('disconnect', () => {
+            addLog('Disconnected from server', 'error');
+        });
+        
+        // System status updates
+        socket.on('system_status', (status) => {
+            updateSystemStatus(status);
+        });
+        
+        // Meeting events
+        socket.on('meeting_scheduled', (meeting) => {
+            addLog(`Meeting scheduled: ${meeting.title}`, 'info');
+            loadMeetings();
+        });
+        
+        socket.on('rfid_event', (event) => {
+            addLog(`RFID scanned: ${event.cardId}`, 'info');
+        });
+        
+        socket.on('emergency_state', (state) => {
+            addLog(`Emergency activated at ${new Date(state.timestamp).toLocaleTimeString()}`, 'error');
+            updateEmergencyStatus(true);
+        });
+        
+        socket.on('manual_action', (action) => {
+            addLog(`Manual action: ${action.action}`, 'info');
+        });
+        
+        // Form submission
+        document.getElementById('meeting-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                title: document.getElementById('title').value,
+                organizer: document.getElementById('organizer').value,
+                startTime: document.getElementById('start-time').value,
+                endTime: document.getElementById('end-time').value,
+                participants: document.getElementById('participants').value.split(',').map(p => p.trim()).filter(p => p)
+            };
+            
+            try {
+                const response = await fetch('/api/meetings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    const meeting = await response.json();
+                    addLog(`Meeting created: ${meeting.title}`, 'success');
+                    document.getElementById('meeting-form').reset();
+                    loadMeetings();
+                } else {
+                    const error = await response.json();
+                    addLog(`Failed to create meeting: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Error creating meeting: ${error.message}`, 'error');
+            }
+        });
+        
+        // Control functions
+        function controlLights(on) {
+            socket.emit('control_lights', { on });
+            addLog(`Lights ${on ? 'ON' : 'OFF'} command sent`, 'info');
+        }
+        
+        function controlAC(on) {
+            socket.emit('control_ac', { on });
+            addLog(`AC ${on ? 'ON' : 'OFF'} command sent`, 'info');
+        }
+        
+        function controlDoor(locked) {
+            socket.emit('control_door', { locked });
+            addLog(`Door ${locked ? 'LOCK' : 'UNLOCK'} command sent`, 'info');
+        }
+        
+        async function validateQR() {
+            const qrCode = document.getElementById('qr-input').value.trim();
+            if (!qrCode) return;
+            
+            try {
+                const response = await fetch('/api/validate-qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ qrCode })
+                });
+                
+                const result = await response.json();
+                const resultDiv = document.getElementById('qr-result');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div style="color: green;">✅ Valid QR Code! Meeting: ${result.meeting.title}</div>`;
+                    addLog(`QR validated for meeting: ${result.meeting.title}`, 'success');
+                } else {
+                    resultDiv.innerHTML = `<div style="color: red;">❌ ${result.error}</div>`;
+                    addLog(`QR validation failed: ${result.error}`, 'error');
+                }
+                
+                document.getElementById('qr-input').value = '';
+            } catch (error) {
+                addLog(`QR validation error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Update system status display
+        function updateSystemStatus(status) {
+            // ESP32A status
+            const esp32aEl = document.getElementById('esp32a-status');
+            esp32aEl.className = `status-item ${status.esp32a_connected ? 'online' : 'offline'}`;
+            esp32aEl.querySelector('p').textContent = status.esp32a_connected ? 'Connected' : 'Disconnected';
+            
+            // Door status
+            const doorEl = document.getElementById('door-status');
+            doorEl.className = `status-item ${status.door_locked ? 'offline' : 'online'}`;
+            doorEl.querySelector('p').textContent = status.door_locked ? 'Locked' : 'Unlocked';
+            
+            // Lights status
+            const lightsEl = document.getElementById('lights-status');
+            lightsEl.className = `status-item ${status.lights_on ? 'online' : 'offline'}`;
+            lightsEl.querySelector('p').textContent = status.lights_on ? 'On' : 'Off';
+            
+            // AC status
+            const acEl = document.getElementById('ac-status');
+            acEl.className = `status-item ${status.ac_on ? 'online' : 'offline'}`;
+            acEl.querySelector('p').textContent = status.ac_on ? 'On' : 'Off';
+            
+            // Meeting status
+            const meetingEl = document.getElementById('meeting-status');
+            if (status.current_meeting) {
+                meetingEl.className = 'status-item active';
+                meetingEl.querySelector('p').textContent = status.current_meeting.title;
+            } else {
+                meetingEl.className = 'status-item';
+                meetingEl.querySelector('p').textContent = 'No active meeting';
+            }
+            
+            // Emergency status
+            updateEmergencyStatus(status.emergency_state);
+        }
+        
+        function updateEmergencyStatus(emergency) {
+            const emergencyEl = document.getElementById('emergency-status');
+            emergencyEl.className = `status-item ${emergency ? 'offline' : 'online'}`;
+            emergencyEl.querySelector('p').textContent = emergency ? 'EMERGENCY!' : 'Normal';
+        }
+        
+        // Load meetings
+        async function loadMeetings() {
+            try {
+                const response = await fetch('/api/meetings');
+                const meetings = await response.json();
+                
+                const listEl = document.getElementById('meetings-list');
+                if (meetings.length === 0) {
+                    listEl.innerHTML = '<p>No meetings scheduled</p>';
+                    return;
+                }
+                
+                listEl.innerHTML = meetings.map(meeting => `
+                    <div class="meeting-item ${meeting.status === 'active' ? 'active' : ''}">
+                        <h4>${meeting.title}</h4>
+                        <p><strong>Organizer:</strong> ${meeting.organizer}</p>
+                        <p><strong>Time:</strong> ${new Date(meeting.startTime).toLocaleString()} - ${new Date(meeting.endTime).toLocaleString()}</p>
+                        <p><strong>Status:</strong> ${meeting.status}</p>
+                        <p><strong>QR Code:</strong> <span class="meeting-qr">${meeting.qrCode}</span></p>
+                        ${meeting.participants.length > 0 ? `<p><strong>Participants:</strong> ${meeting.participants.join(', ')}</p>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                addLog(`Error loading meetings: ${error.message}`, 'error');
+            }
+        }
+        
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logsEl = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logsEl.appendChild(logEntry);
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMeetings();
+            
+            // Set default times
+            const now = new Date();
+            const startTime = new Date(now.getTime() + 30 * 60000); // 30 minutes from now
+            const endTime = new Date(startTime.getTime() + 60 * 60000); // 1 hour duration
+            
+            document.getElementById('start-time').value = startTime.toISOString().slice(0, 16);
+            document.getElementById('end-time').value = endTime.toISOString().slice(0, 16);
+        });
+        
+        // Enable Enter key for QR validation
+        document.getElementById('qr-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateQR();
+            }
+        });
+    </script>
+</body>
+</html>
