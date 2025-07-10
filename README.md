@@ -1,13 +1,5 @@
 # smart-meeting-room
 
-Berikut adalah contoh **README.md** (dalam format markdown) yang bisa langsung Anda gunakan untuk repo Anda sesuai dengan arsitektur:  
-**Node.js ⇄ ESP32A (WebSocket), dan ESP32A ⇄ ESP32B/ESP32C (RS485)**
-
----
-
-```markdown
-# Smart Meeting Room System
-
 Sistem otomasi ruang meeting terintegrasi berbasis ESP32, dengan komunikasi RS485 antar perangkat dan WebSocket ke server Node.js.
 
 ---
