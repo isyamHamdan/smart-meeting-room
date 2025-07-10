@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meeting Room Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1><i class="fas fa-building"></i> Smart Meeting Room</h1>
+                <div class="header-actions">
+                    <span id="current-time"></span>
+                    <div class="connection-status" id="connection-status">
+                        <i class="fas fa-circle"></i> Connecting...
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <nav class="nav-menu">
+                    <ul>
+                        <li class="nav-item active" data-tab="dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </li>
+                        <li class="nav-item" data-tab="rooms">
+                            <i class="fas fa-door-open"></i> Rooms
+                        </li>
+                        <li class="nav-item" data-tab="bookings">
+                            <i class="fas fa-calendar-check"></i> Bookings
+                        </li>
+                        <li class="nav-item" data-tab="devices">
+                            <i class="fas fa-microchip"></i> Devices
+                        </li>
+                        <li class="nav-item" data-tab="activity">
+                            <i class="fas fa-list"></i> Activity
+                        </li>
+                        <li class="nav-item" data-tab="settings">
+                            <i class="fas fa-cog"></i> Settings
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <h2>Dashboard Overview</h2>
+                        <button class="btn btn-primary" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-door-open"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-rooms">0</h3>
+                                <p>Total Rooms</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="active-bookings">0</h3>
+                                <p>Active Bookings</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="connected-devices">0</h3>
+                                <p>Connected Devices</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="todays-bookings">0</h3>
+                                <p>Today's Bookings</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Status -->
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>Room Status</h3>
+                            <div id="room-status-list" class="room-list">
+                                <!-- Room status items will be populated here -->
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <h3>Active Meetings</h3>
+                            <div id="active-meetings-list" class="meeting-list">
+                                <!-- Active meetings will be populated here -->
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <h3>Device Status</h3>
+                            <div id="device-status-list" class="device-list">
+                                <!-- Device status will be populated here -->
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <h3>Recent Activity</h3>
+                            <div id="recent-activity-list" class="activity-list">
+                                <!-- Recent activity will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rooms Tab -->
+                <div id="rooms-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>Meeting Rooms</h2>
+                        <button class="btn btn-primary" onclick="showCreateRoomModal()">
+                            <i class="fas fa-plus"></i> Add Room
+                        </button>
+                    </div>
+                    <div id="rooms-content" class="rooms-grid">
+                        <!-- Rooms will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Bookings Tab -->
+                <div id="bookings-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>Bookings Management</h2>
+                        <button class="btn btn-primary" onclick="showCreateBookingModal()">
+                            <i class="fas fa-plus"></i> New Booking
+                        </button>
+                    </div>
+                    <div class="booking-filters">
+                        <select id="booking-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                        <input type="date" id="booking-filter-date" placeholder="Filter by date">
+                        <button class="btn btn-secondary" onclick="filterBookings()">Filter</button>
+                    </div>
+                    <div id="bookings-content" class="bookings-table">
+                        <!-- Bookings will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Devices Tab -->
+                <div id="devices-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>ESP32 Devices</h2>
+                        <button class="btn btn-secondary" onclick="refreshDevices()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="devices-content" class="devices-grid">
+                        <!-- Devices will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Activity Tab -->
+                <div id="activity-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>System Activity</h2>
+                        <div class="activity-controls">
+                            <select id="activity-filter">
+                                <option value="">All Events</option>
+                                <option value="RFID_SCANNED">RFID Scans</option>
+                                <option value="BUTTON_PRESSED">Button Presses</option>
+                                <option value="SENSOR_DATA">Sensor Data</option>
+                                <option value="DEVICE_CONNECTED">Device Connections</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="refreshActivity()">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="activity-content" class="activity-feed">
+                        <!-- Activity feed will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>System Settings</h2>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-section">
+                            <h3>Emergency Controls</h3>
+                            <button class="btn btn-danger" onclick="emergencyStopAll()">
+                                <i class="fas fa-exclamation-triangle"></i> Emergency Stop All
+                            </button>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3>System Information</h3>
+                            <div id="system-info">
+                                <!-- System info will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Alerts Container -->
+        <div id="alerts-container" class="alerts-container">
+            <!-- Alerts will be shown here -->
+        </div>
+
+        <!-- Modals will be added here -->
+        <div id="modal-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

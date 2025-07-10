@@ -45,7 +45,31 @@ Sistem otomasi ruang meeting terintegrasi berbasis ESP32, dengan komunikasi RS48
 
 ---
 
-## Fitur Utama
+## Fitur Node.js Server
+
+- **RESTful API** untuk manajemen ruangan dan booking
+- **WebSocket real-time** untuk komunikasi dengan ESP32
+- **Dashboard web** untuk monitoring dan kontrol
+- **Sistem autentikasi** dengan JWT
+- **Database SQLite** untuk penyimpanan data
+- **Logging sistem** dan event tracking
+- **QR code generation** untuk validasi booking
+- **Emergency controls** untuk keamanan
+
+### API Endpoints Utama
+
+- `GET/POST /api/rooms` - Manajemen ruangan
+- `GET/POST /api/bookings` - Manajemen booking
+- `GET /api/devices` - Status perangkat ESP32
+- `POST /api/control/:roomId/:device` - Kontrol perangkat
+- `GET /api/stats` - Statistik sistem
+- `GET /api/activity` - Log aktivitas
+
+### WebSocket Events
+
+- **ESP32 → Server:** `esp32_register`, `esp32_event`, `heartbeat`
+- **Server → ESP32:** `command`, `registration_success`
+- **Server → Dashboard:** `device_connected`, `meeting_started`, `emergency_alert`
 
 - **Booking & Validasi QR:** User booking via web/dashboard, scan QR, validasi otomatis.
 - **Kontrol Aktuator:** Relay (lampu, AC, colokan), solenoid pintu, buzzer (melalui ESP32A).
@@ -87,12 +111,70 @@ Sistem otomasi ruang meeting terintegrasi berbasis ESP32, dengan komunikasi RS48
 
 ## Instalasi & Pengembangan
 
-1. **Jalankan server Node.js**  
-    ```bash
-    node backend/nodejs-server/index.js
-    ```
-2. **Upload firmware ke ESP32A, ESP32B, ESP32C**
-3. **Pastikan semua perangkat terhubung ke WiFi (untuk ESP32A) dan bus RS485**
+### Setup Node.js Server
+
+1. **Masuk ke direktori server**
+   ```bash
+   cd backend/nodejs-server
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Konfigurasi environment (opsional)**
+   ```bash
+   cp .env.example .env
+   # Edit .env sesuai kebutuhan
+   ```
+
+4. **Jalankan server**
+   ```bash
+   # Development mode (dengan auto-reload)
+   npm run dev
+   
+   # Production mode
+   npm start
+   ```
+
+5. **Akses dashboard**
+   - Buka browser: http://localhost:3000
+   - API tersedia di: http://localhost:3000/api
+   - Health check: http://localhost:3000/health
+
+### Setup ESP32 Devices
+
+1. **Upload firmware ke ESP32A, ESP32B, ESP32C**
+2. **Konfigurasi WiFi untuk ESP32A (gateway)**
+3. **Hubungkan ESP32B dan ESP32C ke ESP32A via RS485**
+4. **Pastikan semua perangkat terhubung dan terdaftar di dashboard**
+
+### Struktur Project Lengkap
+
+```
+smart-meeting-room/
+├── README.md
+├── backend/
+│   └── nodejs-server/
+│       ├── index.js              # Server utama
+│       ├── package.json          # Dependencies Node.js
+│       ├── .env                  # Konfigurasi environment
+│       ├── config/               # Konfigurasi database & WebSocket
+│       ├── controllers/          # Logic API endpoints
+│       ├── models/               # Model data (Room, Booking, Device)
+│       ├── routes/               # Routing API
+│       ├── middleware/           # Authentication & validation
+│       ├── services/             # Business logic services
+│       ├── utils/                # Helper functions & logging
+│       ├── public/               # Dashboard web (HTML/CSS/JS)
+│       └── logs/                 # Log files
+├── firmware/                     # ESP32 firmware (akan dibuat)
+│   ├── esp32a-gateway/
+│   ├── esp32b-sensor/
+│   └── esp32c-display/
+└── docs/                         # Dokumentasi (akan dibuat)
+```
 
 ---
 
