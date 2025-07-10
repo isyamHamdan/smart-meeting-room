@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meeting Room Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .performance-bar {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .room-status {
+            text-align: center;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-available { background-color: #4CAF50; }
+        .status-occupied { background-color: #FF9800; }
+        .status-maintenance { background-color: #F44336; }
+        .status-disconnected { background-color: #9E9E9E; }
+        .status-connected { background-color: #4CAF50; }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-unlock { background: #4CAF50; color: white; }
+        .btn-lock { background: #F44336; color: white; }
+        .btn-lights-on { background: #FFC107; color: black; }
+        .btn-lights-off { background: #9E9E9E; color: white; }
+        .btn-ac-on { background: #2196F3; color: white; }
+        .btn-ac-off { background: #9E9E9E; color: white; }
+        
+        .event-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .event-item {
+            padding: 8px;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .event-time {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .response-time {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .performance-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Smart Meeting Room Dashboard</h1>
+            <p>Optimized for Fast Performance - "lama ya" Solution</p>
+        </div>
+        
+        <div class="performance-bar">
+            <strong>System Status:</strong> 
+            <span id="connection-status">Connecting...</span> | 
+            <strong>Avg Response:</strong> <span id="avg-response">-</span>ms |
+            <strong>Connected Devices:</strong> <span id="device-count">0</span> |
+            <strong>Uptime:</strong> <span id="uptime">-</span>
+        </div>
+        
+        <div class="performance-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-commands">0</div>
+                <div class="stat-label">Total Commands</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="fastest-response">-</div>
+                <div class="stat-label">Fastest (ms)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="slowest-response">-</div>
+                <div class="stat-label">Slowest (ms)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="success-rate">100%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>Conference Room 1</h3>
+                <div class="room-status">
+                    <p><span class="status-indicator status-available" id="room-status"></span><span id="room-status-text">Available</span></p>
+                    <h4>Device Status</h4>
+                    <p><span class="status-indicator status-disconnected" id="esp32a-status"></span>ESP32A Gateway</p>
+                    <p><span class="status-indicator status-disconnected" id="esp32b-status"></span>ESP32B Sensor</p>
+                    <p><span class="status-indicator status-disconnected" id="esp32c-status"></span>ESP32C Display</p>
+                </div>
+                
+                <div class="controls">
+                    <button class="control-btn btn-unlock" onclick="sendCommand('door', 'unlock')">🔓 Unlock Door</button>
+                    <button class="control-btn btn-lock" onclick="sendCommand('door', 'lock')">🔒 Lock Door</button>
+                    <button class="control-btn btn-lights-on" onclick="sendCommand('lights', 'on')">💡 Lights On</button>
+                    <button class="control-btn btn-lights-off" onclick="sendCommand('lights', 'off')">🌙 Lights Off</button>
+                    <button class="control-btn btn-ac-on" onclick="sendCommand('ac', 'on')">❄️ AC On</button>
+                    <button class="control-btn btn-ac-off" onclick="sendCommand('ac', 'off')">🔥 AC Off</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Quick Actions</h3>
+                <div class="controls">
+                    <button class="control-btn" style="background: #9C27B0; color: white;" onclick="simulateRFID()">📱 Simulate RFID Scan</button>
+                    <button class="control-btn" style="background: #FF5722; color: white;" onclick="simulateButton()">🚨 Emergency Button</button>
+                    <button class="control-btn" style="background: #607D8B; color: white;" onclick="testPerformance()">⚡ Performance Test</button>
+                    <button class="control-btn" style="background: #795548; color: white;" onclick="clearLog()">🗑️ Clear Log</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>Current Actuator Status</h4>
+                    <p>🚪 Door: <strong id="door-status">Locked</strong></p>
+                    <p>💡 Lights: <strong id="lights-status">Off</strong></p>
+                    <p>❄️ AC: <strong id="ac-status">Off</strong></p>
+                    <p>🔊 Buzzer: <strong id="buzzer-status">Off</strong></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card full-width">
+            <h3>📊 Real-time Event Log</h3>
+            <div class="event-log" id="event-log">
+                <div class="event-item">
+                    <div>System initialized</div>
+                    <div class="event-time" id="init-time"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let commandCount = 0;
+        let responseTimes = [];
+        let successCount = 0;
+        
+        // Initialize
+        document.getElementById('init-time').textContent = new Date().toLocaleTimeString();
+        
+        // Socket event handlers
+        socket.on('connect', () => {
+            updateConnectionStatus('Connected', 'green');
+            addEvent('Connected to server', 'success');
+        });
+        
+        socket.on('disconnect', () => {
+            updateConnectionStatus('Disconnected', 'red');
+            addEvent('Disconnected from server', 'error');
+        });
+        
+        socket.on('system_status', (data) => {
+            updateSystemStatus(data);
+        });
+        
+        socket.on('device_event', (event) => {
+            addEvent(`${event.source}: ${event.messageType}`, 'info', JSON.stringify(event.payload));
+        });
+        
+        socket.on('command_response', (response) => {
+            commandCount++;
+            
+            if (response.success) {
+                successCount++;
+                responseTimes.push(response.responseTime);
+                addEvent(`Command successful`, 'success', `Response time: ${response.responseTime}ms`);
+            } else {
+                addEvent(`Command failed: ${response.error}`, 'error', `Response time: ${response.responseTime}ms`);
+            }
+            
+            updatePerformanceStats();
+        });
+        
+        socket.on('emergency_alert', (alert) => {
+            addEvent('🚨 EMERGENCY ALERT', 'emergency', `Room: ${alert.room}`);
+            document.body.style.background = 'linear-gradient(135deg, #FF5722 0%, #F44336 100%)';
+            setTimeout(() => {
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }, 3000);
+        });
+        
+        // Performance monitoring
+        setInterval(() => {
+            fetch('/api/performance')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('avg-response').textContent = Math.round(data.data.averageWebSocketResponseTime);
+                        document.getElementById('device-count').textContent = data.data.connectedDevices;
+                        document.getElementById('uptime').textContent = formatUptime(data.data.uptime);
+                    }
+                });
+        }, 5000);
+        
+        function updateConnectionStatus(status, color) {
+            const element = document.getElementById('connection-status');
+            element.textContent = status;
+            element.style.color = color;
+        }
+        
+        function updateSystemStatus(data) {
+            const room = data.rooms.room1;
+            if (room) {
+                // Update room status
+                document.getElementById('room-status-text').textContent = room.status.charAt(0).toUpperCase() + room.status.slice(1);
+                document.getElementById('room-status').className = `status-indicator status-${room.status}`;
+                
+                // Update ESP32 status
+                document.getElementById('esp32a-status').className = `status-indicator status-${room.esp32Status.a}`;
+                document.getElementById('esp32b-status').className = `status-indicator status-${room.esp32Status.b}`;
+                document.getElementById('esp32c-status').className = `status-indicator status-${room.esp32Status.c}`;
+                
+                // Update actuator status
+                document.getElementById('door-status').textContent = room.actuators.door.charAt(0).toUpperCase() + room.actuators.door.slice(1);
+                document.getElementById('lights-status').textContent = room.actuators.lights ? 'On' : 'Off';
+                document.getElementById('ac-status').textContent = room.actuators.ac ? 'On' : 'Off';
+                document.getElementById('buzzer-status').textContent = room.actuators.buzzer ? 'On' : 'Off';
+            }
+        }
+        
+        function updatePerformanceStats() {
+            document.getElementById('total-commands').textContent = commandCount;
+            
+            if (responseTimes.length > 0) {
+                const fastest = Math.min(...responseTimes);
+                const slowest = Math.max(...responseTimes);
+                document.getElementById('fastest-response').textContent = fastest;
+                document.getElementById('slowest-response').textContent = slowest;
+            }
+            
+            const successRate = commandCount > 0 ? Math.round((successCount / commandCount) * 100) : 100;
+            document.getElementById('success-rate').textContent = successRate + '%';
+        }
+        
+        function addEvent(message, type, details = null) {
+            const log = document.getElementById('event-log');
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            
+            let typeIcon = '';
+            switch (type) {
+                case 'success': typeIcon = '✅'; break;
+                case 'error': typeIcon = '❌'; break;
+                case 'info': typeIcon = 'ℹ️'; break;
+                case 'emergency': typeIcon = '🚨'; break;
+                default: typeIcon = '📝';
+            }
+            
+            eventItem.innerHTML = `
+                <div>${typeIcon} ${message} ${details ? `<span class="response-time">${details}</span>` : ''}</div>
+                <div class="event-time">${new Date().toLocaleTimeString()}</div>
+            `;
+            
+            log.insertBefore(eventItem, log.firstChild);
+            
+            // Keep only last 50 events
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+        
+        function sendCommand(target, action, params = {}) {
+            const startTime = Date.now();
+            
+            fetch(`/api/rooms/room1/control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ target, action, params })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseTime = Date.now() - startTime;
+                
+                if (data.success) {
+                    addEvent(`${target} ${action} completed`, 'success', `${responseTime}ms`);
+                } else {
+                    addEvent(`${target} ${action} failed`, 'error', data.error);
+                }
+            })
+            .catch(error => {
+                addEvent(`Command failed: ${error.message}`, 'error');
+            });
+        }
+        
+        function simulateRFID() {
+            const cardId = '12345678'; // Valid card for demo
+            addEvent('Simulating RFID scan', 'info', `Card: ${cardId}`);
+            
+            // This would be sent from ESP32B via ESP32A
+            socket.emit('rs485_data', {
+                source: 'ESP32B',
+                messageType: 'RFID_SCAN',
+                payload: { cardId, timestamp: Date.now() }
+            });
+        }
+        
+        function simulateButton() {
+            addEvent('Simulating emergency button press', 'info');
+            
+            socket.emit('rs485_data', {
+                source: 'ESP32B',
+                messageType: 'BUTTON_PRESS',
+                payload: { buttonType: 'emergency', timestamp: Date.now() }
+            });
+        }
+        
+        function testPerformance() {
+            addEvent('Running performance test...', 'info');
+            
+            const commands = [
+                { target: 'lights', action: 'on' },
+                { target: 'lights', action: 'off' },
+                { target: 'door', action: 'unlock' },
+                { target: 'door', action: 'lock' },
+                { target: 'ac', action: 'on' },
+                { target: 'ac', action: 'off' }
+            ];
+            
+            commands.forEach((cmd, index) => {
+                setTimeout(() => {
+                    sendCommand(cmd.target, cmd.action);
+                }, index * 100); // 100ms intervals
+            });
+        }
+        
+        function clearLog() {
+            document.getElementById('event-log').innerHTML = `
+                <div class="event-item">
+                    <div>Event log cleared</div>
+                    <div class="event-time">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+        }
+        
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours}h ${minutes}m ${secs}s`;
+        }
+    </script>
+</body>
+</html>
