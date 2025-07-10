@@ -111,4 +111,3 @@ Silakan fork, pull request, atau ajukan issue untuk fitur/bug/saran.
 ---
 
 Anda bisa copy-paste markdown di atas ke file `README.md` di repo Anda.  
-Jika ingin contoh struktur folder, file, atau kode awal Node.js/ESP32, silakan minta saja!
